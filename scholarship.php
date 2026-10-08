@@ -1,81 +1,17 @@
 <?php
-$page = 'scholarship';
-$title = 'Scholarship Test';
-require __DIR__ . '/includes/header.php';
-
-$fee = (int) env('SCHOLARSHIP_FEE', '500');
-$open = env('SCHOLARSHIP_OPEN', '1') === '1';
-
+$page='scholarship'; $title='Scholarship Test'; require __DIR__ . '/includes/header.php';
+$fee = (int) env('SCHOLARSHIP_FEE', '500'); $open = env('SCHOLARSHIP_OPEN', '1') === '1';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
-    $student = trim($_POST['student_name'] ?? '');
-    $father = trim($_POST['father_name'] ?? '');
-    $class = trim($_POST['class_name'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $bform = trim($_POST['bform'] ?? '');
-    $address = trim($_POST['address'] ?? '');
-    $method = trim($_POST['payment_method'] ?? '');
-    $txn = trim($_POST['transaction_id'] ?? '');
-    $allowed = ['JazzCash', 'Easypaisa', 'Bank transfer'];
-    if (!$open) {
-        flash('error', 'Scholarship registration is closed right now.');
-    } elseif ($student === '' || $father === '' || $class === '' || $phone === '' || !in_array($method, $allowed, true)) {
-        flash('error', 'Please fill the child, father, class, phone, and payment method.');
-    } elseif ($fee > 0 && $txn === '') {
-        flash('error', 'Pay the registration fee, then enter the transaction ID.');
-    } else {
-        $stmt = db()->prepare('INSERT INTO scholarships (student_name, father_name, class_name, phone, bform, address, fee_amount, payment_method, transaction_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$student, $father, $class, $phone, $bform, $address, $fee, $method, $txn, $fee > 0 ? 'pending' : 'paid', date('Y-m-d H:i:s')]);
-        flash('ok', 'Registration received. The office will confirm your fee on ' . $phone . '.');
-    }
-    redirect('scholarship.php');
+    $student = trim($_POST['student_name'] ?? ''); $father = trim($_POST['father_name'] ?? ''); $class = trim($_POST['class_name'] ?? ''); $phone = trim($_POST['phone'] ?? '');
+    if (!$open) { flash('error', 'Registration is closed.'); redirect('scholarship.php'); }
+    if ($student === '' || $father === '' || $class === '' || $phone === '') { flash('error', 'Child, father, class, and phone are required.'); redirect('scholarship.php'); }
+    db()->prepare('INSERT INTO scholarships (student_name, father_name, class_name, phone, bform, address, fee_amount, payment_method, transaction_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([$student, $father, $class, $phone, $_POST['bform'] ?? '', $_POST['address'] ?? '', $fee, 'Challan', '', $fee > 0 ? 'pending' : 'paid', date('Y-m-d H:i:s')]);
+    $id = (int) db()->lastInsertId(); $challan = make_challan($id);
+    db()->prepare('UPDATE scholarships SET challan_no = ? WHERE id = ?')->execute([$challan, $id]);
+    redirect('challan.php?no=' . urlencode($challan));
 }
 ?>
-<section class="section">
-    <p class="kicker">Announcement</p>
-    <h1><?= e(env('SCHOLARSHIP_TITLE', 'Free Scholarship Test')) ?></h1>
-    <p class="lede">Bright Star Public Elementary School, Yaro Lound is holding a free scholarship test on <?= e(env('SCHOLARSHIP_DATE', 'a date to be announced')) ?>. Selected students receive a free scholarship seat. <?= e(env('SCHOLARSHIP_NOTE')) ?></p>
-    <p>Registration fee: <strong><?= $fee > 0 ? e(money($fee)) : 'Free' ?></strong></p>
-</section>
-<section class="section grid-2">
-    <form class="form-card" method="post">
-        <?= csrf_field() ?>
-        <h2>Register online</h2>
-        <?php if (!$open): ?><p>Registration is closed. Watch the notices page.</p><?php endif; ?>
-        <div class="form-row">
-            <div><label>Child’s name</label><input name="student_name" required <?= $open ? '' : 'disabled' ?>></div>
-            <div><label>Father’s name</label><input name="father_name" required <?= $open ? '' : 'disabled' ?>></div>
-        </div>
-        <div class="form-row">
-            <div>
-                <label>Class</label>
-                <select name="class_name" <?= $open ? '' : 'disabled' ?>>
-                    <?php foreach (classes() as $class): ?><option><?= e($class) ?></option><?php endforeach; ?>
-                </select>
-            </div>
-            <div><label>Phone</label><input name="phone" required <?= $open ? '' : 'disabled' ?>></div>
-        </div>
-        <div class="form-row">
-            <div><label>B-Form number</label><input name="bform" <?= $open ? '' : 'disabled' ?>></div>
-            <div><label>Village</label><input name="address" placeholder="Yaro Lound" <?= $open ? '' : 'disabled' ?>></div>
-        </div>
-        <label>Payment method</label>
-        <select name="payment_method" <?= $open ? '' : 'disabled' ?>>
-            <option>JazzCash</option>
-            <option>Easypaisa</option>
-            <option>Bank transfer</option>
-        </select>
-        <label>Transaction ID</label>
-        <input name="transaction_id" placeholder="After you pay, paste the TID here" <?= $open ? '' : 'disabled' ?>>
-        <div class="btn-row"><button class="btn btn-primary" type="submit" <?= $open ? '' : 'disabled' ?>>Submit registration</button></div>
-    </form>
-    <aside class="card">
-        <h2>Pay the fee</h2>
-        <p>Send <?= $fee > 0 ? e(money($fee)) : 'no fee' ?> and write the child’s name in the payment note.</p>
-        <p><strong>JazzCash</strong><br><?= e(env('JAZZCASH_NAME')) ?><br><?= e(env('JAZZCASH_NUMBER')) ?></p>
-        <p><strong>Easypaisa</strong><br><?= e(env('EASYPAISA_NAME')) ?><br><?= e(env('EASYPAISA_NUMBER')) ?></p>
-        <p><strong>Bank</strong><br><?= e(env('BANK_TITLE')) ?><br><?= e(env('BANK_NAME')) ?><br><?= e(env('BANK_ACCOUNT')) ?></p>
-        <p>The office marks the form verified after the fee appears. Call <?= e(setting('phone')) ?> if you need help.</p>
-    </aside>
-</section>
+<section class="section"><p class="kicker">Announcement</p><h1><?= e(env('SCHOLARSHIP_TITLE', 'Free Scholarship Test')) ?></h1><p class="lede">Test date: <?= e(env('SCHOLARSHIP_DATE')) ?>. <?= e(env('SCHOLARSHIP_NOTE')) ?></p><p>Registration fee: <strong><?= $fee > 0 ? e(money($fee)) : 'Free' ?></strong></p></section>
+<section class="section grid-2"><form class="form-card" method="post"><?= csrf_field() ?><h2>Register</h2><label>Child’s name</label><input name="student_name" required <?= $open ? '' : 'disabled' ?>><label>Father’s name</label><input name="father_name" required <?= $open ? '' : 'disabled' ?>><label>Class</label><select name="class_name"><?php foreach (classes() as $c): ?><option><?= e($c) ?></option><?php endforeach; ?></select><label>Phone</label><input name="phone" required <?= $open ? '' : 'disabled' ?>><label>B-Form</label><input name="bform"><label>Village</label><input name="address" placeholder="Yaro Lound"><button class="btn btn-primary" type="submit">Create challan</button></form><aside class="card"><h2>How to pay</h2><p>The next page gives a challan number. Pay by 1Bill when it is switched on, or by JazzCash <?= e(env('JAZZCASH_NUMBER')) ?> and Easypaisa <?= e(env('EASYPAISA_NUMBER')) ?>.</p></aside></section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
