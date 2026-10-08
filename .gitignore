@@ -1,0 +1,7 @@
+.env
+data/*.sqlite
+uploads/gallery/*
+uploads/logo/*
+!uploads/gallery/.gitkeep
+!uploads/logo/.gitkeep
+.DS_Store
