@@ -1,0 +1,3 @@
+<?php $page='gallery'; $title='Gallery'; require __DIR__ . '/includes/header.php'; $photos = db()->query('SELECT * FROM gallery ORDER BY created_at DESC')->fetchAll(); ?>
+<section class="section"><h1>Gallery</h1><?php if (!$photos): ?><p class="empty">No photos yet. More pictures are on the <a href="<?= e(setting('facebook')) ?>">Facebook page</a>.</p><?php else: ?><div class="gallery-grid"><?php foreach ($photos as $photo): ?><figure><img src="<?= e(asset('uploads/gallery/' . $photo['filename'])) ?>" alt="<?= e($photo['title']) ?>"><figcaption><?= e($photo['title']) ?></figcaption></figure><?php endforeach; ?></div><?php endif; ?></section>
+<?php require __DIR__ . '/includes/footer.php'; ?>

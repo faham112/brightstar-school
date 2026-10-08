@@ -1,0 +1,3 @@
+<?php $page='notices'; $title='Notices'; require __DIR__ . '/includes/header.php'; $notices = db()->query('SELECT * FROM notices ORDER BY pinned DESC, created_at DESC')->fetchAll(); ?>
+<section class="section"><h1>Notices</h1><div class="grid-2"><?php foreach ($notices as $notice): ?><article class="notice <?= $notice['pinned'] ? 'pinned' : '' ?>"><p class="meta"><?= e(date('d M Y', strtotime($notice['created_at']))) ?></p><h2><?= e($notice['title']) ?></h2><p><?= nl2br(e($notice['body'])) ?></p></article><?php endforeach; ?><?php if (!$notices): ?><p class="empty">No notices yet.</p><?php endif; ?></div></section>
+<?php require __DIR__ . '/includes/footer.php'; ?>
